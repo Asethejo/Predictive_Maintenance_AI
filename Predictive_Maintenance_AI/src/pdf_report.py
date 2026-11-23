@@ -1,0 +1,206 @@
+
+from io import BytesIO
+from datetime import datetime
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    HRFlowable
+)
+
+
+def generate_prediction_pdf(
+    machine_type,
+    sensor_values,
+    prediction,
+    failure_probability,
+    shap_explanation=None
+):
+    """
+    Generate a downloadable predictive maintenance PDF report.
+    """
+
+    buffer = BytesIO()
+
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=20 * mm,
+        leftMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm
+    )
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "ReportTitle",
+        parent=styles["Title"],
+        fontSize=21,
+        textColor=colors.HexColor("#17365D"),
+        spaceAfter=10
+    )
+
+    heading_style = ParagraphStyle(
+        "SectionHeading",
+        parent=styles["Heading2"],
+        textColor=colors.HexColor("#17365D"),
+        spaceBefore=14,
+        spaceAfter=8
+    )
+
+    normal_style = styles["BodyText"]
+
+    story = []
+
+    # Title
+    story.append(
+        Paragraph(
+            "AI-Powered Predictive Maintenance",
+            title_style
+        )
+    )
+
+    story.append(
+        Paragraph(
+            "Machine Failure Prediction Report",
+            styles["Heading2"]
+        )
+    )
+
+    story.append(Spacer(1, 8))
+
+    story.append(
+        Paragraph(
+            f"Generated on: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}",
+            normal_style
+        )
+    )
+
+    story.append(Spacer(1, 15))
+
+    story.append(HRFlowable(width="100%", color=colors.grey))
+
+    # Prediction summary
+    story.append(
+        Paragraph("1. Prediction Summary", heading_style)
+    )
+
+    status = (
+        "Failure Predicted"
+        if int(prediction) == 1
+        else "No Failure Predicted"
+    )
+
+    probability = float(failure_probability) * 100
+
+    summary_data = [
+        ["Parameter", "Result"],
+        ["Machine Type", str(machine_type)],
+        ["Predicted Status", status],
+        ["Failure Probability", f"{probability:.2f}%"]
+    ]
+
+    summary_table = Table(
+        summary_data,
+        colWidths=[65 * mm, 95 * mm]
+    )
+
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F3F6FA")),
+        ("PADDING", (0, 0), (-1, -1), 9)
+    ]))
+
+    story.append(summary_table)
+
+    # Sensor information
+    story.append(
+        Paragraph("2. Machine Sensor Readings", heading_style)
+    )
+
+    sensor_data = [["Sensor Parameter", "Input Value"]]
+
+    for key, value in sensor_values.items():
+        sensor_data.append([str(key), str(value)])
+
+    sensor_table = Table(
+        sensor_data,
+        colWidths=[80 * mm, 80 * mm]
+    )
+
+    sensor_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("PADDING", (0, 0), (-1, -1), 7)
+    ]))
+
+    story.append(sensor_table)
+
+    # SHAP explanation
+    if shap_explanation:
+        story.append(
+            Paragraph("3. Explainable AI Insights", heading_style)
+        )
+
+        story.append(
+            Paragraph(
+                "The following information summarizes the supplied "
+                "model explanation. SHAP values describe how features "
+                "contribute to the model output; they do not establish "
+                "physical causes of machine failure.",
+                normal_style
+            )
+        )
+
+        story.append(Spacer(1, 8))
+
+        for item in shap_explanation:
+            story.append(
+                Paragraph(f"• {str(item)}", normal_style)
+            )
+
+    # Limitations
+    story.append(
+        Paragraph("Important Model Limitations", heading_style)
+    )
+
+    limitations = [
+        "The model uses the UCI AI4I 2020 simulated benchmark dataset.",
+        "Predictions are model estimates and are not guaranteed outcomes.",
+        "This application is not connected to live industrial machinery.",
+        "The predicted probability should not be interpreted as a calibrated real-world risk."
+    ]
+
+    for limitation in limitations:
+        story.append(
+            Paragraph(f"• {limitation}", normal_style)
+        )
+        story.append(Spacer(1, 4))
+
+    story.append(Spacer(1, 15))
+
+    story.append(
+        Paragraph(
+            "Generated by AI-Powered Predictive Maintenance "
+            "and Equipment Intelligence System.",
+            styles["Italic"]
+        )
+    )
+
+    document.build(story)
+
+    buffer.seek(0)
+
+    return buffer

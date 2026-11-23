@@ -1,0 +1,7 @@
+__pycache__/
+.venv/
+venv/
+.env
+.streamlit/
+models/*.joblib
+.DS_Store

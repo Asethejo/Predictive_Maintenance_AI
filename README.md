@@ -288,10 +288,5 @@ http://localhost:8501
 - Automated maintenance alerts.
 - Integration with industrial equipment systems.
 
-## License
-
-This project is developed for educational and portfolio purposes. Add an appropriate open-source license before allowing reuse or redistribution.
-
----
 
 **Developed as an AI and Machine Learning Predictive Maintenance Project.**
